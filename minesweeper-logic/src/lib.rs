@@ -349,7 +349,7 @@ mod grid_tests {
 
 #[cfg(test)]
 mod game_tests {
-    use crate::{Game, GameState};
+    use crate::{Game, GameState, Grid, GRID_SIZE, Cell};
 
     #[test]
     fn it_should_initialize_with_the_inprogress_state() {
@@ -359,7 +359,38 @@ mod game_tests {
 
     #[test]
     fn it_should_set_the_game_to_lost_state_when_clicking_a_bomb() {
-        let game = Game::new();
+        let mut game = Game {
+            grid: Grid {
+                cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+            },
+            state: GameState::INPROGRESS
+        };
+        game.grid.cells[0][0].set_bombed();
+        game.grid.expose_cell(0, 0);
+        game.update_game_state();
+        matches!(game.state, GameState::LOST);
+    }
 
+    #[test]
+    fn it_should_set_the_game_to_won_state_when_all_other_cells_are_exposed() {
+        let mut game = Game {
+            grid: Grid {
+                cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+            },
+            state: GameState::INPROGRESS
+        };
+        game.grid.cells[0][0].set_bombed();
+        game.grid.expose_cell(0, 1); // right
+        game.update_game_state();
+        matches!(game.state, GameState::INPROGRESS);
+        game.grid.expose_cell(1, 1); // diagonal
+        game.update_game_state();
+        matches!(game.state, GameState::INPROGRESS);
+        game.grid.expose_cell(1, 0); // below
+        game.update_game_state();
+        matches!(game.state, GameState::INPROGRESS);
+        game.grid.expose_cell(2, 2); // any random empty cell
+        game.update_game_state();
+        matches!(game.state, GameState::WON);
     }
 }
