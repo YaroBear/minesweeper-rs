@@ -87,6 +87,36 @@ impl Grid {
         }
     }
 
+    pub fn expose_cell(&mut self, row: usize, col: usize) {
+        if Grid::is_out_of_bounds(isize::try_from(row).unwrap(), isize::try_from(col).unwrap()) {
+            panic!("The selected coordinates {},{} are outside of the grid", row, col);
+        }
+        match self.cells[row][col].state {
+            CellState::SEALED => (),
+            CellState::EXPOSED => (),
+            CellState::HIDDEN => {
+                if self.cells[row][col].bombed || self.cells[row][col].value >= 0 {
+                    self.cells[row][col].expose();
+                    if self.cells[row][col].value == 0 {
+                        self.expose_neighbors_of(row, col);
+                    }
+                }
+            }
+        }
+    }
+
+    fn expose_neighbors_of(&mut self, row: usize, col: usize) {
+        for adj_i in -1i8..=1i8 {
+            for adj_j in -1i8..=1i8 {
+                let adj_cell_row = isize::try_from(i8::try_from(row).unwrap() + adj_i).unwrap();
+                let adj_cell_col = isize::try_from(i8::try_from(col).unwrap() + adj_j).unwrap();
+                if !Grid::is_out_of_bounds(adj_cell_row, adj_cell_col) {
+                    self.expose_cell(adj_cell_row.try_into().unwrap(), adj_cell_col.try_into().unwrap());
+                }
+            }
+        }
+    }
+
     fn is_out_of_bounds(row: isize, col: isize) -> bool {
         row < 0 || row > isize::try_from(GRID_SIZE).unwrap() - 1 || col < 0 || col > isize::try_from(GRID_SIZE).unwrap() -1
     }
@@ -110,7 +140,43 @@ impl Grid {
     }
 }
 
-pub struct GameState {
+pub struct Game{
+    grid: Grid,
+    state: GameState
+}
+
+pub enum GameState {
+    INPROGRESS,
+    LOST,
+    WON
+}
+
+impl Game {
+    pub fn new() -> Self {
+        Game {
+            grid: Grid::new(),
+            state: GameState::INPROGRESS
+        }
+    }
+
+    pub fn update_game_state(&mut self) {
+        let mut exposed_cell_count = 0;
+        for cells in self.grid.cells {
+            for cell in cells {
+                if let CellState::EXPOSED = cell.state {
+                    if cell.bombed == true {
+                        self.state = GameState::LOST;
+                    }
+                    else {
+                        exposed_cell_count += 1;
+                    }
+                }
+            }
+        }
+        if exposed_cell_count == (GRID_SIZE * GRID_SIZE - usize::try_from(BOMB_COUNT).unwrap()) {
+            self.state = GameState::WON;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -232,8 +298,68 @@ mod grid_tests {
         grid.cells[0][0].set_bombed();
         grid.cells[2][2].set_bombed();
         grid.calculate_valued_cells();
+        
+        // -------------
+        // | * | 1 | 0 |
+        // | 1 | 2 | 1 |
+        // | 0 | 1 | * |
 
         assert_eq!(grid.cells[0][1].value, 1);
         assert_eq!(grid.cells[1][1].value, 2);
+    }
+
+    #[test]
+    fn it_should_expose_the_cell_if_its_bombed() {
+        let mut grid = Grid {
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+        };
+        grid.cells[0][0].set_bombed();
+        grid.expose_cell(0, 0);
+        matches!(grid.cells[0][0].state, CellState::EXPOSED);
+    }
+
+    #[test]
+    fn it_should_expose_the_cell_and_resursively_expose_neighbors_when_its_value_is_0() {
+        let mut grid = Grid {
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+        };
+        grid.expose_cell(0, 0);
+        for cells in grid.cells {
+            for cell in cells {
+                matches!(cell.state, CellState::EXPOSED);
+            }
+        }
+    }
+
+    #[test]
+    fn it_should_only_expose_the_numbered_cell() {
+        let mut grid = Grid {
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+        };
+        grid.cells[1][1].set_bombed();
+        grid.expose_cell(0, 0);
+        matches!(grid.cells[0][0].state, CellState::EXPOSED);
+        for row in 1..GRID_SIZE {
+            for col in 1..GRID_SIZE {
+                matches!(grid.cells[row][col].state, CellState::HIDDEN);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod game_tests {
+    use crate::{Game, GameState};
+
+    #[test]
+    fn it_should_initialize_with_the_inprogress_state() {
+        let game = Game::new();
+        matches!(game.state, GameState::INPROGRESS);
+    }
+
+    #[test]
+    fn it_should_set_the_game_to_lost_state_when_clicking_a_bomb() {
+        let game = Game::new();
+
     }
 }
