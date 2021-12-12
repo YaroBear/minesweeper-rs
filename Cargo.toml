@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "minesweeper-logic",
-    "minesweeper-gui"
+    "minesweeper-nannou-gui"
 ]
+resolver="2"

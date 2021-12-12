@@ -5,16 +5,16 @@ const BOMB_COUNT: u8 = 10;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Cell {
-    state: CellState,
-    bombed: bool,
-    value: u8
+    pub state: CellState,
+    pub bombed: bool,
+    pub value: u8,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum CellState {
     EXPOSED,
     SEALED,
-    HIDDEN
+    HIDDEN,
 }
 
 impl Cell {
@@ -22,7 +22,7 @@ impl Cell {
         Cell {
             state: CellState::HIDDEN,
             bombed: false,
-            value: 0
+            value: 0,
         }
     }
 
@@ -33,14 +33,14 @@ impl Cell {
     pub fn seal(&mut self) {
         match self.state {
             CellState::EXPOSED => (),
-            _ => self.state = CellState::SEALED
+            _ => self.state = CellState::SEALED,
         }
     }
 
     pub fn unseal(&mut self) {
         match self.state {
             CellState::EXPOSED => (),
-            _ => self.state = CellState::HIDDEN
+            _ => self.state = CellState::HIDDEN,
         }
     }
 
@@ -61,13 +61,13 @@ impl Cell {
 
 #[derive(Debug)]
 pub struct Grid {
-    cells: [[Cell; GRID_SIZE]; GRID_SIZE]
+    pub cells: [[Cell; GRID_SIZE]; GRID_SIZE],
 }
 
 impl Grid {
     pub fn new() -> Self {
         let mut grid = Grid {
-            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE],
         };
         grid.assign_bombs();
         grid.calculate_valued_cells();
@@ -87,9 +87,13 @@ impl Grid {
         }
     }
 
+    #[allow(unused_comparisons)]
     pub fn expose_cell(&mut self, row: usize, col: usize) {
         if Grid::is_out_of_bounds(isize::try_from(row).unwrap(), isize::try_from(col).unwrap()) {
-            panic!("The selected coordinates {},{} are outside of the grid", row, col);
+            panic!(
+                "The selected coordinates {},{} are outside of the grid",
+                row, col
+            );
         }
         match self.cells[row][col].state {
             CellState::SEALED => (),
@@ -105,20 +109,41 @@ impl Grid {
         }
     }
 
+    pub fn toggle_seal(&mut self, row: usize, col: usize) {
+        if Grid::is_out_of_bounds(isize::try_from(row).unwrap(), isize::try_from(col).unwrap()) {
+            panic!(
+                "The selected coordinates {},{} are outside of the grid",
+                row, col
+            );
+        }
+        match self.cells[row][col].state {
+            CellState::SEALED => self.cells[row][col].unseal(),
+            _ => self.cells[row][col].seal(),
+        }
+    }
+
     fn expose_neighbors_of(&mut self, row: usize, col: usize) {
         for adj_i in -1i8..=1i8 {
             for adj_j in -1i8..=1i8 {
                 let adj_cell_row = isize::try_from(i8::try_from(row).unwrap() + adj_i).unwrap();
                 let adj_cell_col = isize::try_from(i8::try_from(col).unwrap() + adj_j).unwrap();
-                if !Grid::is_out_of_bounds(adj_cell_row, adj_cell_col) {
-                    self.expose_cell(adj_cell_row.try_into().unwrap(), adj_cell_col.try_into().unwrap());
+                if !Grid::is_out_of_bounds(adj_cell_row, adj_cell_col)
+                    && !self.cells[row][col].bombed
+                {
+                    self.expose_cell(
+                        adj_cell_row.try_into().unwrap(),
+                        adj_cell_col.try_into().unwrap(),
+                    );
                 }
             }
         }
     }
 
     fn is_out_of_bounds(row: isize, col: isize) -> bool {
-        row < 0 || row > isize::try_from(GRID_SIZE).unwrap() - 1 || col < 0 || col > isize::try_from(GRID_SIZE).unwrap() -1
+        row < 0
+            || row > isize::try_from(GRID_SIZE).unwrap() - 1
+            || col < 0
+            || col > isize::try_from(GRID_SIZE).unwrap() - 1
     }
 
     fn calculate_valued_cells(&mut self) {
@@ -126,11 +151,17 @@ impl Grid {
             for col in 0..GRID_SIZE {
                 for adj_i in -1i8..=1i8 {
                     for adj_j in -1i8..=1i8 {
-                        let adj_cell_row = isize::try_from(i8::try_from(row).unwrap() + adj_i).unwrap();
-                        let adj_cell_col = isize::try_from(i8::try_from(col).unwrap() + adj_j).unwrap();
+                        let adj_cell_row =
+                            isize::try_from(i8::try_from(row).unwrap() + adj_i).unwrap();
+                        let adj_cell_col =
+                            isize::try_from(i8::try_from(col).unwrap() + adj_j).unwrap();
                         if !Grid::is_out_of_bounds(adj_cell_row, adj_cell_col)
-                            && self.cells[usize::try_from(adj_cell_row).unwrap()][usize::try_from(adj_cell_col).unwrap()].bombed == true
-                            && self.cells[row][col].bombed == false {
+                            && self.cells[usize::try_from(adj_cell_row).unwrap()]
+                                [usize::try_from(adj_cell_col).unwrap()]
+                            .bombed
+                                == true
+                            && self.cells[row][col].bombed == false
+                        {
                             self.cells[row][col].increment();
                         }
                     }
@@ -140,22 +171,22 @@ impl Grid {
     }
 }
 
-pub struct Game{
-    grid: Grid,
-    state: GameState
+pub struct Game {
+    pub grid: Grid,
+    pub state: GameState,
 }
 
 pub enum GameState {
     INPROGRESS,
     LOST,
-    WON
+    WON,
 }
 
 impl Game {
     pub fn new() -> Self {
         Game {
             grid: Grid::new(),
-            state: GameState::INPROGRESS
+            state: GameState::INPROGRESS,
         }
     }
 
@@ -166,8 +197,7 @@ impl Game {
                 if let CellState::EXPOSED = cell.state {
                     if cell.bombed == true {
                         self.state = GameState::LOST;
-                    }
-                    else {
+                    } else {
                         exposed_cell_count += 1;
                     }
                 }
@@ -181,8 +211,8 @@ impl Game {
 
 #[cfg(test)]
 mod cell_tests {
-    use crate::CellState;
     use crate::Cell;
+    use crate::CellState;
 
     #[test]
     fn it_should_be_hidden_by_default() {
@@ -255,7 +285,7 @@ mod cell_tests {
 
 #[cfg(test)]
 mod grid_tests {
-    use crate::{BOMB_COUNT, CellState, GRID_SIZE, Grid, Cell};
+    use crate::{Cell, CellState, Grid, BOMB_COUNT, GRID_SIZE};
 
     #[test]
     fn it_should_initialize_2d_grid_of_hidden_cells() {
@@ -286,19 +316,25 @@ mod grid_tests {
     fn it_should_be_out_of_bounds() {
         assert_eq!(Grid::is_out_of_bounds(-1, 0), true);
         assert_eq!(Grid::is_out_of_bounds(0, -1), true);
-        assert_eq!(Grid::is_out_of_bounds(0, isize::try_from(GRID_SIZE).unwrap() + 1), true);
-        assert_eq!(Grid::is_out_of_bounds(isize::try_from(GRID_SIZE).unwrap() + 1, 0), true);
+        assert_eq!(
+            Grid::is_out_of_bounds(0, isize::try_from(GRID_SIZE).unwrap() + 1),
+            true
+        );
+        assert_eq!(
+            Grid::is_out_of_bounds(isize::try_from(GRID_SIZE).unwrap() + 1, 0),
+            true
+        );
     }
 
     #[test]
     fn it_should_calculate_the_correct_count_of_adj_bombs() {
         let mut grid = Grid {
-            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE],
         };
         grid.cells[0][0].set_bombed();
         grid.cells[2][2].set_bombed();
         grid.calculate_valued_cells();
-        
+
         // -------------
         // | * | 1 | 0 |
         // | 1 | 2 | 1 |
@@ -311,7 +347,7 @@ mod grid_tests {
     #[test]
     fn it_should_expose_the_cell_if_its_bombed() {
         let mut grid = Grid {
-            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE],
         };
         grid.cells[0][0].set_bombed();
         grid.expose_cell(0, 0);
@@ -321,7 +357,7 @@ mod grid_tests {
     #[test]
     fn it_should_expose_the_cell_and_resursively_expose_neighbors_when_its_value_is_0() {
         let mut grid = Grid {
-            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE],
         };
         grid.expose_cell(0, 0);
         for cells in grid.cells {
@@ -334,7 +370,7 @@ mod grid_tests {
     #[test]
     fn it_should_only_expose_the_numbered_cell() {
         let mut grid = Grid {
-            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+            cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE],
         };
         grid.cells[1][1].set_bombed();
         grid.expose_cell(0, 0);
@@ -349,7 +385,7 @@ mod grid_tests {
 
 #[cfg(test)]
 mod game_tests {
-    use crate::{Game, GameState, Grid, GRID_SIZE, Cell};
+    use crate::{Cell, Game, GameState, Grid, GRID_SIZE};
 
     #[test]
     fn it_should_initialize_with_the_inprogress_state() {
@@ -361,9 +397,9 @@ mod game_tests {
     fn it_should_set_the_game_to_lost_state_when_clicking_a_bomb() {
         let mut game = Game {
             grid: Grid {
-                cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+                cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE],
             },
-            state: GameState::INPROGRESS
+            state: GameState::INPROGRESS,
         };
         game.grid.cells[0][0].set_bombed();
         game.grid.expose_cell(0, 0);
@@ -375,9 +411,9 @@ mod game_tests {
     fn it_should_set_the_game_to_won_state_when_all_other_cells_are_exposed() {
         let mut game = Game {
             grid: Grid {
-                cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE]
+                cells: [[Cell::new(); GRID_SIZE]; GRID_SIZE],
             },
-            state: GameState::INPROGRESS
+            state: GameState::INPROGRESS,
         };
         game.grid.cells[0][0].set_bombed();
         game.grid.expose_cell(0, 1); // right
