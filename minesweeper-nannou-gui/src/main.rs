@@ -3,23 +3,20 @@ use nannou::prelude::*;
 
 struct Model {
     game: Game,
-    bomb_texture: wgpu::Texture,
-    flag_texture: wgpu::Texture,
 }
 
 fn main() {
-    nannou::app(model).update(update).run();
+    nannou::app(model).run();
 }
 
 fn map_range(from_range: (f32, f32), to_range: (f32, f32), s: f32) -> f32 {
     to_range.0 + (s - from_range.0) * (to_range.1 - to_range.0) / (from_range.1 - from_range.0)
 }
 
-fn update(_app: &App, model: &mut Model, _update: Update) {
-    match model.game.state {
-        GameState::LOST => {}
-        GameState::WON => {}
-        GameState::INPROGRESS => (),
+fn key_pressed(_app: &App, model: &mut Model, key: Key) {
+    match key {
+        Key::R => model.game = Game::new(),
+        _ => (),
     }
 }
 
@@ -56,90 +53,108 @@ fn model(app: &App) -> Model {
         .size(500, 500)
         .view(view)
         .mouse_pressed(mouse_pressed)
+        .key_pressed(key_pressed)
         .build()
         .unwrap();
 
     let game = Game::new();
 
-    let assets = app.assets_path().unwrap();
-    let bomb_image_path = assets.join("mine.png");
-    let flag_image_path = assets.join("flag.png");
-
-    let bomb_texture = wgpu::Texture::from_path(app, bomb_image_path).unwrap();
-    let flag_texture = wgpu::Texture::from_path(app, flag_image_path).unwrap();
-
     Model {
         game,
-        bomb_texture,
-        flag_texture,
+    }
+}
+
+fn draw_cell_border(draw: &Draw, pos: Vec2, cell_size: f32) {
+    draw.rect()
+        .xy(pos)
+        .wh(vec2(cell_size, cell_size))
+        .stroke(Rgb8::new(144, 255, 202))
+        .no_fill()
+        .stroke_weight(2.0);
+}
+
+fn draw_hidden_cell(draw: &Draw, pos: Vec2, cell_size: f32) {
+    draw_cell_border(draw, pos, cell_size);
+    draw.rect()
+        .xy(pos)
+        .wh(vec2(cell_size / 2., cell_size / 2.))
+        .stroke(Rgb8::new(144, 255, 202))
+        .no_fill()
+        .stroke_weight(2.0);
+}
+
+fn draw_bombed_cell(draw: &Draw, pos: Vec2, cell_size: f32) {
+    draw_cell_border(draw, pos, cell_size);
+    draw.text("*")
+        .xy(pos)
+        .rgb8(55, 208, 253)
+        .font_size(32);
+}
+
+fn draw_sealed_cell(draw: &Draw, pos: Vec2, cell_size: f32) {
+    draw_cell_border(draw, pos, cell_size);
+    draw.text("/>")
+        .xy(pos)
+        .rgb8(255, 120, 120)
+        .font_size(20);
+}
+
+fn draw_numbered_cell(draw: &Draw, pos: Vec2, cell_size: f32, value: u8) {
+    draw_cell_border(draw, pos, cell_size);
+    draw.text(&value.to_string())
+        .xy(pos)
+        .rgb8(255, 230, 153)
+        .font_size(20);
+}
+
+fn draw_game_progress(draw: &Draw, window_rect: Rect, model: &Model) {
+    let text_pos = vec2(window_rect.w() / 2.0, window_rect.h() / -2.0);
+    match model.game.state {
+        GameState::LOST => {
+            draw.text("YOU LOST").xy(text_pos).color(RED).font_size(60);
+        }
+        GameState::WON => {
+            draw.text("YOU WON!")
+                .xy(text_pos)
+                .color(GREEN)
+                .font_size(60);
+        }
+        GameState::INPROGRESS => (),
     }
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
-    frame.clear(WHITE);
+    frame.clear(BLACK);
 
     let window_rect = app.window_rect();
-    // translate orign from center to top left corner
+    let cell_size = window_rect.w() / model.game.grid.cells.len() as f32;
+
+    // translate origin from center to top left corner
     let draw = app
         .draw()
         .x_y(window_rect.w() * -0.5, window_rect.h() * 0.5);
-    let mut col_count = 0u8;
-    let mut row_count = 0u8;
+
+    let mut col_count = 0u32;
+    let mut row_count = 0u32;
 
     for cells in model.game.grid.cells {
         for cell in cells {
             // shapes are draw from center so offset x,y by half width,height
-            let shift_x = 50.0 * f32::try_from(col_count).unwrap() + 25.0;
-            let shift_y = -50.0 * f32::try_from(row_count).unwrap() - 25.0;
+            let shift_x = cell_size * col_count as f32 + cell_size / 2.;
+            let shift_y = -cell_size * row_count as f32 - cell_size / 2.;
+            let pos = vec2(shift_x, shift_y);
             match cell.state {
-                CellState::HIDDEN => {
-                    draw.rect()
-                        .x(shift_x)
-                        .y(shift_y)
-                        .wh(vec2(50.0, 50.0))
-                        .stroke(BLACK)
-                        .stroke_weight(4.0);
-                    draw.rect()
-                        .x(shift_x)
-                        .y(shift_y)
-                        .wh(vec2(30.0, 30.0))
-                        .stroke(BLACK)
-                        .stroke_weight(4.0);
-                }
+                CellState::HIDDEN => draw_hidden_cell(&draw, pos, cell_size),
                 CellState::EXPOSED => {
                     if cell.bombed {
-                        draw.texture(&model.bomb_texture)
-                            .x(shift_x)
-                            .y(shift_y)
-                            .wh(vec2(50.0, 50.0));
+                        draw_bombed_cell(&draw, pos, cell_size);
                     } else if cell.value > 0 {
-                        // draw number
-                        draw.rect()
-                            .x(shift_x)
-                            .y(shift_y)
-                            .wh(vec2(50.0, 50.0))
-                            .stroke(BLACK)
-                            .stroke_weight(4.0);
-                        draw.text(&cell.value.to_string())
-                            .x(shift_x)
-                            .y(shift_y)
-                            .color(BLACK)
-                            .font_size(16);
+                        draw_numbered_cell(&draw, pos, cell_size, cell.value);
                     } else {
-                        draw.rect()
-                            .x(shift_x)
-                            .y(shift_y)
-                            .wh(vec2(50.0, 50.0))
-                            .stroke(BLACK)
-                            .stroke_weight(4.0);
+                        draw_cell_border(&draw, pos, cell_size);
                     }
                 }
-                CellState::SEALED => {
-                    draw.texture(&model.flag_texture)
-                        .x(shift_x)
-                        .y(shift_y)
-                        .wh(vec2(50.0, 50.0));
-                }
+                CellState::SEALED => draw_sealed_cell(&draw, pos, cell_size),
             }
             col_count += 1;
         }
@@ -147,23 +162,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         col_count = 0;
     }
 
-    match model.game.state {
-        GameState::LOST => {
-            draw.text("YOU LOST")
-                .x(window_rect.w() / 2.0)
-                .y(window_rect.h() / -2.0)
-                .color(RED)
-                .font_size(60);
-        }
-        GameState::WON => {
-            draw.text("YOU WON!")
-                .x(window_rect.w() / 2.0)
-                .y(window_rect.h() / -2.0)
-                .color(GREEN)
-                .font_size(60);
-        }
-        GameState::INPROGRESS => (),
-    }
+    draw_game_progress(&draw, window_rect, model);
 
     draw.to_frame(app, &frame).unwrap();
 }
