@@ -12,6 +12,7 @@ Contains Cell, Grid, and GameState implementations with unit tests.
 
 ### 3 different GUIs
 
-- [ in progress ] [Nannou](https://github.com/nannou-org/nannou) creative coding library
+- [x] [Nannou](https://github.com/nannou-org/nannou) creative coding library
+![screenshot](https://raw.githubusercontent.com/YaroBear/minesweeper-rs/blob/main/nannou-gui.png)
 - [ ] [Bevy](https://github.com/bevyengine/bevy) game engine
 - [ ] [Tui](https://github.com/fdehau/tui-rs) terminal user interface
