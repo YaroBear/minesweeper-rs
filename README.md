@@ -1,3 +1,5 @@
+[![Build + Test](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build.yml)
+
 # Minesweeper in Rust 3 different ways
 
 ## Goal
