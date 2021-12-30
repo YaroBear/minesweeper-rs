@@ -3,6 +3,8 @@ use nannou::prelude::*;
 
 struct Model {
     game: Game,
+    bomb_texture: wgpu::Texture,
+    flag_texture: wgpu::Texture
 }
 
 fn main() {
@@ -57,10 +59,20 @@ fn model(app: &App) -> Model {
         .build()
         .unwrap();
 
+    let assets = app.assets_path().unwrap();
+
+    let bomb_path = assets.join("bomb.png");
+    let bomb_texture = wgpu::Texture::from_path(app, bomb_path).unwrap();
+
+    let flag_path = assets.join("flag.png");
+    let flag_texture = wgpu::Texture::from_path(app, flag_path).unwrap();
+
     let game = Game::new();
 
     Model {
         game,
+        bomb_texture,
+        flag_texture
     }
 }
 
@@ -83,20 +95,18 @@ fn draw_hidden_cell(draw: &Draw, pos: Vec2, cell_size: f32) {
         .stroke_weight(2.0);
 }
 
-fn draw_bombed_cell(draw: &Draw, pos: Vec2, cell_size: f32) {
+fn draw_bombed_cell(model: &Model, draw: &Draw, pos: Vec2, cell_size: f32) {
     draw_cell_border(draw, pos, cell_size);
-    draw.text("*")
+    draw.texture(&model.bomb_texture)
         .xy(pos)
-        .rgb8(55, 208, 253)
-        .font_size(32);
+        .wh(vec2(cell_size - 10.0, cell_size - 10.0));
 }
 
-fn draw_sealed_cell(draw: &Draw, pos: Vec2, cell_size: f32) {
+fn draw_sealed_cell(model: &Model, draw: &Draw, pos: Vec2, cell_size: f32) {
     draw_cell_border(draw, pos, cell_size);
-    draw.text("/>")
+    draw.texture(&model.flag_texture)
         .xy(pos)
-        .rgb8(255, 120, 120)
-        .font_size(20);
+        .wh(vec2(cell_size - 10.0, cell_size - 10.0));
 }
 
 fn draw_numbered_cell(draw: &Draw, pos: Vec2, cell_size: f32, value: u8) {
@@ -147,14 +157,14 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 CellState::HIDDEN => draw_hidden_cell(&draw, pos, cell_size),
                 CellState::EXPOSED => {
                     if cell.bombed {
-                        draw_bombed_cell(&draw, pos, cell_size);
+                        draw_bombed_cell(model, &draw, pos, cell_size);
                     } else if cell.value > 0 {
                         draw_numbered_cell(&draw, pos, cell_size, cell.value);
                     } else {
                         draw_cell_border(&draw, pos, cell_size);
                     }
                 }
-                CellState::SEALED => draw_sealed_cell(&draw, pos, cell_size),
+                CellState::SEALED => draw_sealed_cell(model, &draw, pos, cell_size),
             }
             col_count += 1;
         }
