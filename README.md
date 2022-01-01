@@ -1,4 +1,4 @@
-[![Build + Test](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build.yml/badge.svg)](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build.yml)
+[![Build + Test (Logic Only)](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build-test-logic.yml/badge.svg)](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build-test-logic.yml)
 
 # Minesweeper in Rust 3 different ways
 
