@@ -1,6 +1,6 @@
 [![Build + Test (Logic Only)](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build-test-logic.yml/badge.svg)](https://github.com/YaroBear/minesweeper-rs/actions/workflows/build-test-logic.yml)
 
-# Minesweeper in Rust 3 different ways
+# Minesweeper in Rust (3 different ways)
 
 ## Goal
 
